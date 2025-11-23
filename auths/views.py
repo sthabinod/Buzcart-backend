@@ -149,14 +149,14 @@ class MeView(APIView):
         examples=[OpenApiExample(
             "Me",
             value={
-                "id": 1, "username": "admin", "first_name": "Binod", "last_name": "Shrestha",
-                "email": "binod@example.com", "full_name": "Binod Shrestha",
+                "id": 1, "username": "admin", "first_name": "Alish", "last_name": "Shrestha",
+                "email": "binod@example.com", "full_name": "Alish Shrestha",
                 "profile": {
                     "avatar": "/media/avatars/me.jpg",
-                    "phone": "+977-9800000000",
-                    "address": "Satdobato, Lalitpur",
-                    "city": "Bagmati Province",
-                    "zip": "44700",
+                    "phone": "+61 002302030203",
+                    "address": "Alish Street, Sydney",
+                    "city": "Sydney",
+                    "zip": "2000",
                     "created_at": "2025-10-10T12:00:00Z",
                     "updated_at": "2025-10-11T08:00:00Z"
                 },
