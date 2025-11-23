@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../styles/upload.css";
@@ -21,19 +21,6 @@ function getCsrfToken() {
   return m ? decodeURIComponent(m[1]) : "";
 }
 
-// 🔒 Decode JWT safely to extract has_document
-function decodeJwtPayload(token) {
-  try {
-    const [, payload] = token.split(".");
-    if (!payload) return null;
-    const pad = "=".repeat((4 - (payload.length % 4)) % 4);
-    const b64 = (payload + pad).replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(b64));
-  } catch {
-    return null;
-  }
-}
-
 export default function UploadPage() {
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
@@ -51,15 +38,6 @@ export default function UploadPage() {
     image: null,
     imageUrl: "",
   });
-
-  // 🔒 Determine permission from JWT claim
-  const claims = useMemo(() => decodeJwtPayload(getJwt()), []);
-  const canLinkProduct = !!claims?.has_document;
-
-  // Auto-disable toggle if not allowed
-  useEffect(() => {
-    if (!canLinkProduct && linkProduct) setLinkProduct(false);
-  }, [canLinkProduct, linkProduct]);
 
   // --- File handling ---
   const onFile = useCallback((f) => {
@@ -88,9 +66,12 @@ export default function UploadPage() {
     setProduct((p) => ({ ...p, image: f, imageUrl: URL.createObjectURL(f) }));
   };
 
+  // Map browser mime type -> backend PostType choices ("clip" | "image")
   const mediaType = useMemo(() => {
-    if (!file) return "none";
-    return file.type?.startsWith("video") ? "video" : "image";
+    if (!file) return "";
+    if (file.type?.startsWith("video")) return "clip";   // matches PostType.CLIP
+    if (file.type?.startsWith("image")) return "image";  // matches PostType.IMAGE
+    return "";
   }, [file]);
 
   const reset = () => {
@@ -99,7 +80,14 @@ export default function UploadPage() {
     setCaption("");
     setDesc("");
     setLinkProduct(false);
-    setProduct({ name: "", price: "", qty: "", description: "", image: null, imageUrl: "" });
+    setProduct({
+      name: "",
+      price: "",
+      qty: "",
+      description: "",
+      image: null,
+      imageUrl: "",
+    });
     setProgress(0);
   };
 
@@ -109,6 +97,13 @@ export default function UploadPage() {
       alert("Please select a video or image first.");
       return;
     }
+
+    if (!mediaType) {
+      // Shouldn't happen with accept="video/*,image/*", but just in case
+      alert("Unsupported media type. Please upload a video or image file.");
+      return;
+    }
+
     setBusy(true);
     setProgress(0);
 
@@ -117,11 +112,11 @@ export default function UploadPage() {
 
       fd.append("post_media", file);
       fd.append("caption", caption || "");
-      fd.append("type", mediaType);
+      fd.append("type", mediaType); // "clip" or "image"
       fd.append("description", desc || "");
 
-      // Only allow linking if verified
-      const effectiveLinkProduct = canLinkProduct && !!linkProduct;
+      // Link product purely based on toggle
+      const effectiveLinkProduct = !!linkProduct;
       fd.append("link_product", String(effectiveLinkProduct));
 
       if (effectiveLinkProduct) {
@@ -133,8 +128,9 @@ export default function UploadPage() {
 
       const headers = { Accept: "application/json" };
       const jwt = getJwt();
-      if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
-      else if (BASIC_USER && BASIC_PASS) {
+      if (jwt) {
+        headers["Authorization"] = `Bearer ${jwt}`;
+      } else if (BASIC_USER && BASIC_PASS) {
         const token = btoa(`${BASIC_USER}:${BASIC_PASS}`);
         headers["Authorization"] = `Basic ${token}`;
       }
@@ -144,7 +140,7 @@ export default function UploadPage() {
 
       const url = `${API_BASE}/api/feed/posts/`;
 
-      const res = await axios.post(url, fd, {
+      await axios.post(url, fd, {
         headers,
         withCredentials: true,
         onUploadProgress: (evt) => {
@@ -169,6 +165,8 @@ export default function UploadPage() {
       setBusy(false);
     }
   }
+
+  const isVideo = file?.type?.startsWith("video");
 
   return (
     <div className="up-shell">
@@ -205,7 +203,7 @@ export default function UploadPage() {
               </div>
             ) : (
               <div className="up-preview-media">
-                {mediaType === "video" ? (
+                {isVideo ? (
                   <video src={previewUrl} controls playsInline />
                 ) : (
                   <img src={previewUrl} alt="preview" />
@@ -265,14 +263,12 @@ export default function UploadPage() {
               type="checkbox"
               checked={linkProduct}
               onChange={(e) => setLinkProduct(e.target.checked)}
-              disabled={!canLinkProduct}
             />
-            {/* 🔒 has_document check */}
             <span>Link Product</span>
           </label>
 
-          {/* Product form (only if allowed and toggled) */}
-          {canLinkProduct && linkProduct && (
+          {/* Product form (only when toggled) */}
+          {linkProduct && (
             <div className="up-product">
               <div className="up-grid">
                 <div className="up-field">
@@ -281,7 +277,9 @@ export default function UploadPage() {
                     type="text"
                     className="up-input"
                     value={product.name}
-                    onChange={(e) => setProduct((p) => ({ ...p, name: e.target.value }))}
+                    onChange={(e) =>
+                      setProduct((p) => ({ ...p, name: e.target.value }))
+                    }
                     placeholder="Clothing Jacket"
                   />
                 </div>
@@ -294,7 +292,9 @@ export default function UploadPage() {
                     step="0.01"
                     min="0"
                     value={product.price}
-                    onChange={(e) => setProduct((p) => ({ ...p, price: e.target.value }))}
+                    onChange={(e) =>
+                      setProduct((p) => ({ ...p, price: e.target.value }))
+                    }
                     placeholder="1000"
                   />
                 </div>
@@ -305,7 +305,9 @@ export default function UploadPage() {
                     className="up-input"
                     min="0"
                     value={product.qty}
-                    onChange={(e) => setProduct((p) => ({ ...p, qty: e.target.value }))}
+                    onChange={(e) =>
+                      setProduct((p) => ({ ...p, qty: e.target.value }))
+                    }
                     placeholder="10"
                   />
                 </div>
@@ -325,10 +327,19 @@ export default function UploadPage() {
 
           {/* Actions */}
           <div className="up-actions">
-            <button className="up-btn up-btn-primary" onClick={handleSubmit} disabled={busy}>
+            <button
+              className="up-btn up-btn-primary"
+              onClick={handleSubmit}
+              disabled={busy}
+            >
               {busy ? "Posting..." : "Post"}
             </button>
-            <button className="up-btn up-btn-ghost" type="button" onClick={reset} disabled={busy}>
+            <button
+              className="up-btn up-btn-ghost"
+              type="button"
+              onClick={reset}
+              disabled={busy}
+            >
               Discard
             </button>
           </div>
@@ -339,10 +350,19 @@ export default function UploadPage() {
           <div className="up-phone">
             {!previewUrl ? (
               <div className="up-phone-empty">Preview will appear here</div>
-            ) : mediaType === "video" ? (
-              <video src={previewUrl} controls playsInline className="up-phone-media" />
+            ) : isVideo ? (
+              <video
+                src={previewUrl}
+                controls
+                playsInline
+                className="up-phone-media"
+              />
             ) : (
-              <img src={previewUrl} alt="preview" className="up-phone-media" />
+              <img
+                src={previewUrl}
+                alt="preview"
+                className="up-phone-media"
+              />
             )}
           </div>
         </aside>

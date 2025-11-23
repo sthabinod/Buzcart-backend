@@ -96,11 +96,11 @@ export default function Checkout() {
   const navigate = useNavigate();
 
   // Address fields
-  const [fullName, setFullName] = useState("Binod Shrestha");
-  const [phone, setPhone] = useState("+977-9800000000");
-  const [street, setStreet] = useState("Satdobato, Lalitpur");
-  const [city, setCity] = useState("Kathmandu");
-  const [zip, setZip] = useState("44700");
+  const [fullName, setFullName] = useState("Alish Shrestha");
+  const [phone, setPhone] = useState("+61 002302030203");
+  const [street, setStreet] = useState("Alish Street, Sydney");
+  const [city, setCity] = useState("Sydney");
+  const [zip, setZip] = useState("2000");
 
   // Cart & totals
   const [cart, setCart] = useState(null);
@@ -323,20 +323,6 @@ export default function Checkout() {
               Cash on Delivery
             </label>
 
-            <label className={`pay-opt ${method==="paypal"?"active":""}`}>
-              <input type="radio" name="pay" checked={method==="paypal"} onChange={()=>setMethod("paypal")} />
-              PayPal
-            </label>
-
-            <label className={`pay-opt ${method==="card"?"active":""}`}>
-              <input type="radio" name="pay" checked={method==="card"} onChange={()=>setMethod("card")} />
-              Credit / Debit Card <span className="hint">(coming soon)</span>
-            </label>
-
-            <label className={`pay-opt ${method==="esewa"?"active":""}`}>
-              <input type="radio" name="pay" checked={method==="esewa"} onChange={()=>setMethod("esewa")} />
-              eSewa / Khalti <span className="hint">(coming soon)</span>
-            </label>
           </div>
 
           {/* PayPal Buttons mount point + helper text */}

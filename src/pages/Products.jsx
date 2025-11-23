@@ -140,13 +140,7 @@ export default function Products() {
                   <Link to={`/products/${p.id}`} className="btn btn-view">
                     View
                   </Link>
-                  {p.in_stock ? (
-                    <button className="btn btn-cart">Add to Cart</button>
-                  ) : (
-                    <button className="btn btn-disabled" disabled>
-                      Out of Stock
-                    </button>
-                  )}
+               
                 </div>
               </div>
             </article>
